@@ -1,0 +1,14 @@
+[package]
+name = "libav-decoder"
+version = "0.1.0"
+authors = ["tarkah <admin@tarkah.dev>"]
+edition = "2018"
+
+[workspace]
+members = [
+    ".",
+    "libav-sys"
+]
+
+[dependencies]
+libav-sys = { path = "libav-sys" }

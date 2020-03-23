@@ -1,0 +1,20 @@
+[package]
+name = "libav-sys"
+version = "0.1.0"
+authors = ["tarkah <tarkah@admin.dev>"]
+
+build = "build.rs"
+
+[build-dependencies]
+bindgen = "0.53"
+metadeps = "1.1"
+
+[package.metadata.pkg-config]
+libavcodec = "58"
+libavformat = "58"
+libavfilter = "7.40.101"
+libavresample = "4.0.0"
+libswresample = "3.3.100"
+libavutil = "56"
+
+[dependencies]
