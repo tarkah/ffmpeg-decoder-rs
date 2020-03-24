@@ -1,17 +1,14 @@
 use libav_sys::avformat::{
-    av_dump_format, av_frame_alloc, av_guess_format, av_init_packet, av_read_frame,
-    av_register_all, avcodec_find_decoder, avcodec_open2, avcodec_receive_frame,
-    avcodec_send_packet, avformat_alloc_context, avformat_close_input, avformat_find_stream_info,
-    avformat_open_input, AVCodec, AVDictionary, AVFormatContext, AVFrame, AVPacket,
-    AV_INPUT_BUFFER_PADDING_SIZE,
+    av_dump_format, av_frame_alloc, av_init_packet, av_read_frame, av_register_all,
+    avcodec_find_decoder, avcodec_open2, avcodec_receive_frame, avcodec_send_packet,
+    avformat_alloc_context, avformat_close_input, avformat_find_stream_info, avformat_open_input,
+    AVCodec, AVDictionary, AVFormatContext, AVFrame, AVPacket, AV_INPUT_BUFFER_PADDING_SIZE,
 };
 use std::ffi::CString;
 
 const AVCODEC_MAX_AUDIO_FRAME_SIZE: u32 = 192000;
 
 fn main() {
-    let out_file = CString::new("assets/BGM_AI.mp3").unwrap();
-
     unsafe {
         av_register_all();
 
@@ -74,15 +71,6 @@ fn main() {
 
         dbg!(av_packet.as_ref());
 
-        // let mut out_context: *mut AVFormatContext = avformat_alloc_context();
-        // let format = av_guess_format(
-        //     std::ptr::null_mut(),
-        //     out_file.as_ptr(),
-        //     std::ptr::null_mut(),
-        // );
-        // dbg!(format.as_ref());
-        // out_context.as_mut().unwrap().oformat = format;
-
         let mut data: Vec<u8> = vec![];
 
         let mut i = 0;
@@ -111,6 +99,6 @@ fn main() {
 
         avformat_close_input(&mut avf_context);
 
-        std::fs::write("assets/BGM_AI.raw", data);
+        let _ = std::fs::write("assets/BGM_AI.raw", data);
     }
 }
