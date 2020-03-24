@@ -1,7 +1,7 @@
 [package]
 name = "libav-sys"
 version = "0.1.0"
-authors = ["tarkah <tarkah@admin.dev>"]
+authors = ["tarkah <admin@tarkah.dev>"]
 
 build = "build.rs"
 
@@ -13,5 +13,6 @@ metadeps = "1.1"
 libavcodec = "58"
 libavformat = "58"
 libavutil = "56"
+libswresample = "3.5.100"
 
 [dependencies]

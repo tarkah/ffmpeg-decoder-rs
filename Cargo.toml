@@ -10,5 +10,12 @@ members = [
     "libav-sys"
 ]
 
+[lib]
+name = "libav_decoder"
+path = "src/lib.rs"
+
 [dependencies]
 libav-sys = { path = "libav-sys" }
+
+anyhow = "1.0"
+thiserror = "1.0"

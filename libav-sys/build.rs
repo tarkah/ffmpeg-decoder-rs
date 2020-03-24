@@ -32,7 +32,7 @@ fn main() {
 
     let libs = metadeps::probe().unwrap();
 
-    for e in ["avcodec", "avformat", "avutil"].iter() {
+    for e in ["avcodec", "avformat", "avutil", "swresample"].iter() {
         let headers = libs
             .get(&format!("lib{}", e))
             .unwrap()
