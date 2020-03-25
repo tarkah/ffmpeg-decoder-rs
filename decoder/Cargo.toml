@@ -1,0 +1,15 @@
+[package]
+name = "libav-decoder"
+version = "0.1.0"
+authors = ["tarkah <admin@tarkah.dev>"]
+edition = "2018"
+
+[lib]
+name = "libav_decoder"
+path = "src/lib.rs"
+
+[dependencies]
+libav-sys = { path = "../libav-sys" }
+
+thiserror = "1.0"
+log = "0.4"

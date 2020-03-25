@@ -1,21 +1,6 @@
-[package]
-name = "libav-decoder"
-version = "0.1.0"
-authors = ["tarkah <admin@tarkah.dev>"]
-edition = "2018"
-
 [workspace]
 members = [
-    ".",
-    "libav-sys"
+    "libav-sys",
+    "cli",
+    "decoder"
 ]
-
-[lib]
-name = "libav_decoder"
-path = "src/lib.rs"
-
-[dependencies]
-libav-sys = { path = "libav-sys" }
-
-anyhow = "1.0"
-thiserror = "1.0"
