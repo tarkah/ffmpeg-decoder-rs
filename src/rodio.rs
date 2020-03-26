@@ -7,8 +7,7 @@ use std::time::Duration;
 impl Source for Decoder {
     #[inline]
     fn current_frame_len(&self) -> Option<usize> {
-        //self.current_frame_len()
-        None
+        self._current_frame_len()
     }
 
     #[inline]
