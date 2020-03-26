@@ -22,6 +22,7 @@ use log::{error, info};
 
 const AVERROR_EOF: i32 = -0x20464F45;
 const AVERROR_EAGAIN: i32 = -11;
+const AVERROR_EDEADLK: i32 = -35;
 const DEFAULT_CONVERSION_FORMAT: i32 = AVSampleFormat_AV_SAMPLE_FMT_S16;
 
 pub struct Decoder {
@@ -105,6 +106,7 @@ impl Decoder {
         match status {
             0 => ReceiveFrameStatus::Ok,
             AVERROR_EAGAIN => ReceiveFrameStatus::Again,
+            AVERROR_EDEADLK => ReceiveFrameStatus::Deadlk,
             _ => ReceiveFrameStatus::Other(status),
         }
     }
@@ -203,7 +205,9 @@ impl Decoder {
 
         match self.receive_decoded_frame() {
             ReceiveFrameStatus::Ok => {}
-            ReceiveFrameStatus::Again => return self.process_next_frame(),
+            ReceiveFrameStatus::Again | ReceiveFrameStatus::Deadlk => {
+                return self.process_next_frame()
+            }
             ReceiveFrameStatus::Other(status) => {
                 error!("{}", Error::ReceiveFrame(status));
                 return None;
@@ -282,7 +286,7 @@ impl Iterator for Decoder {
                 self.convert_and_store_frame();
                 return Some(self.next_sample());
             }
-            ReceiveFrameStatus::Again => {
+            ReceiveFrameStatus::Again | ReceiveFrameStatus::Deadlk => {
                 if self.process_next_frame().is_none() {
                     self.cleanup();
                     return None;
@@ -558,6 +562,7 @@ enum SendPacketStatus {
 enum ReceiveFrameStatus {
     Ok,
     Again,
+    Deadlk,
     Other(i32),
 }
 
