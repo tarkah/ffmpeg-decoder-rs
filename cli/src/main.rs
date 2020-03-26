@@ -45,15 +45,13 @@ fn decode_to_file(input: PathBuf) -> Result<(), Error> {
 }
 
 fn play_file(input: PathBuf) -> Result<(), Error> {
-    let decoder = ffmpeg_decoder::Decoder::open(&input.display().to_string())?;
+    let decoder = ffmpeg_decoder::Decoder::open(&input)?;
 
     let device = rodio::default_output_device().unwrap();
     let sink = Sink::new(&device);
 
     sink.append(decoder);
-
     sink.play();
-
     sink.sleep_until_end();
 
     Ok(())

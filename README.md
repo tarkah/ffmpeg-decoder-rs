@@ -1,6 +1,7 @@
 # ffmpeg-decoder
 
-Decodes input audio files and converts sample format to signed 16bit little endian.
+Decodes audio files and converts sample format to signed 16bit. Can
+be used as a playback source with [rodio](https://github.com/RustAudio/rodio).
 
 
 ## Rodio Source
@@ -10,7 +11,7 @@ flag `rodio_source` to include this. Decoder can then be used as a source for Ro
 with the benefits of being able to decode everything ffmpeg supports.
 
 
-## CLI
+## Testing with CLI
 
 
 ### Convert input file to signed 16bit and save as `.raw` alongisde original
