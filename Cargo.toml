@@ -7,6 +7,8 @@ license = "MIT"
 description = "Decodes audio files using ffmpeg with rust. Can be used as a rodio source."
 documentation = "https://docs.rs/ffmpeg-decoder"
 repository = "https://github.com/tarkah/ffmpeg-decoder-rs"
+readme = "README.md"
+
 
 [lib]
 name = "ffmpeg_decoder"
