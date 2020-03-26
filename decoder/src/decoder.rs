@@ -31,7 +31,7 @@ pub struct Decoder {
     codec_ctx: CodecContext,
     frame: Frame,
     packet: Packet,
-    swr_ctx: SwrContext,
+    swr_ctx: Option<SwrContext>,
     current_frame: Vec<u8>,
     first_frame_stored: bool,
 }
@@ -64,8 +64,12 @@ impl Decoder {
         // Initialize packet
         let packet = Packet::new();
 
-        // Initialize swr context
-        let swr_ctx = SwrContext::new(&codec_ctx)?;
+        // Initialize swr context, if conversion is needed
+        let swr_ctx = if codec_ctx.sample_format() != DEFAULT_CONVERSION_FORMAT {
+            Some(SwrContext::new(&codec_ctx)?)
+        } else {
+            None
+        };
 
         Ok(Decoder {
             format_ctx,
@@ -114,44 +118,56 @@ impl Decoder {
     fn convert_and_store_frame(&mut self) {
         let num_samples = self.frame.num_samples();
         let channel_layout = self.frame.channel_layout();
-
-        let mut out_buf = std::ptr::null_mut::<u8>();
-        let out_channels = unsafe { av_get_channel_layout_nb_channels(channel_layout) };
-        let out_samples = unsafe { swr_get_out_samples(self.swr_ctx.inner, num_samples) };
+        let num_channels = unsafe { av_get_channel_layout_nb_channels(channel_layout) };
 
         let extended_data = self.frame.extended_data();
 
-        unsafe {
-            av_samples_alloc(
-                &mut out_buf,
-                ptr::null_mut(),
-                out_channels,
-                out_samples,
-                DEFAULT_CONVERSION_FORMAT,
-                0,
-            )
-        };
+        let out_slice = if self.swr_ctx.is_some() {
+            let mut out_buf = std::ptr::null_mut::<u8>();
 
-        unsafe {
-            swr_convert(
-                self.swr_ctx.inner,
-                &mut out_buf,
-                out_samples,
-                extended_data,
-                num_samples,
-            )
-        };
+            let out_samples =
+                unsafe { swr_get_out_samples(self.swr_ctx.as_ref().unwrap().inner, num_samples) };
 
-        let out_size = unsafe {
-            av_samples_get_buffer_size(
-                ptr::null_mut(),
-                out_channels,
-                out_samples,
-                DEFAULT_CONVERSION_FORMAT,
-                0,
-            )
+            unsafe {
+                av_samples_alloc(
+                    &mut out_buf,
+                    ptr::null_mut(),
+                    num_channels,
+                    out_samples,
+                    DEFAULT_CONVERSION_FORMAT,
+                    0,
+                )
+            };
+
+            unsafe {
+                swr_convert(
+                    self.swr_ctx.as_ref().unwrap().inner,
+                    &mut out_buf,
+                    out_samples,
+                    extended_data,
+                    num_samples,
+                )
+            };
+
+            let out_size = unsafe {
+                av_samples_get_buffer_size(
+                    ptr::null_mut(),
+                    num_channels,
+                    out_samples,
+                    DEFAULT_CONVERSION_FORMAT,
+                    0,
+                )
+            };
+
+            unsafe { slice::from_raw_parts(out_buf, out_size as usize) }
+        } else {
+            unsafe {
+                slice::from_raw_parts(
+                    extended_data.as_ref().unwrap().as_ref().unwrap(),
+                    self.frame.inner.as_ref().unwrap().linesize[0] as usize,
+                )
+            }
         };
-        let out_slice = unsafe { slice::from_raw_parts(out_buf, out_size as usize) };
 
         if !self.current_frame.is_empty() {
             self.current_frame.drain(..);
