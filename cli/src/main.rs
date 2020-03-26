@@ -24,7 +24,7 @@ fn main() {
 }
 
 fn decode_to_file(input: PathBuf) -> Result<(), Error> {
-    let decoder = libav_decoder::Decoder::open(&input.display().to_string())?;
+    let decoder = libav_decoder::Decoder::open(&input)?;
 
     let samples = decoder.into_iter().collect::<Vec<i16>>();
 

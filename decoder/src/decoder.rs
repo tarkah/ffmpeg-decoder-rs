@@ -14,6 +14,7 @@ use libav_sys::swresample::{
     swr_alloc_set_opts, swr_convert, swr_get_out_samples, swr_init,
 };
 use std::ffi::{CStr, CString};
+use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::time::Duration;
@@ -37,11 +38,11 @@ pub struct Decoder {
 }
 
 impl Decoder {
-    pub fn open(path: &str) -> Result<Decoder, Error> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Decoder, Error> {
         unsafe { av_register_all() };
 
         // Open the file and get the format context
-        let format_ctx = FormatContext::open(path)?;
+        let format_ctx = FormatContext::open(&path.as_ref().display().to_string())?;
 
         // Find first audio stream in file
         format_ctx.find_stream_info()?;
