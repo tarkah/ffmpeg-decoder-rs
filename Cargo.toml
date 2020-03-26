@@ -9,7 +9,7 @@ documentation = "https://docs.rs/ffmpeg-decoder"
 repository = "https://github.com/tarkah/ffmpeg-decoder-rs"
 readme = "README.md"
 keywords = ["audio", "ffmpeg", "rodio"]
-categories = ["multimedia::audio", "multimedia::encoding", ""]
+categories = ["multimedia::audio", "multimedia::encoding"]
 
 [lib]
 name = "ffmpeg_decoder"
