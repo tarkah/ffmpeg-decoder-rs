@@ -8,7 +8,8 @@ description = "Decodes audio files using ffmpeg with rust. Can be used as a rodi
 documentation = "https://docs.rs/ffmpeg-decoder"
 repository = "https://github.com/tarkah/ffmpeg-decoder-rs"
 readme = "README.md"
-
+keywords = ["audio", "ffmpeg", "rodio"]
+categories = ["multimedia::audio", "multimedia::encoding", ""]
 
 [lib]
 name = "ffmpeg_decoder"
