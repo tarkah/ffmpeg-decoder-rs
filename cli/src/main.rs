@@ -13,20 +13,20 @@ fn main() {
     let opts = Opts::from_args();
 
     let status = match opts.command {
-        Command::Save { input } => decode_to_file(input),
+        Command::Convert { input } => decode_to_file(input),
         Command::Play { input } => play_file(input),
     };
 
     if let Err(e) = status {
-        log_error(e.into());
+        log_error(e);
         std::process::exit(1);
     }
 }
 
 fn decode_to_file(input: PathBuf) -> Result<(), Error> {
-    let decoder = libav_decoder::Decoder::open(&input)?;
+    let decoder = ffmpeg_decoder::Decoder::open(&input)?;
 
-    let samples = decoder.into_iter().collect::<Vec<i16>>();
+    let samples = decoder.collect::<Vec<i16>>();
 
     let samples_u8 =
         unsafe { std::slice::from_raw_parts(samples.as_ptr() as *const u8, samples.len() * 2) };
@@ -45,7 +45,7 @@ fn decode_to_file(input: PathBuf) -> Result<(), Error> {
 }
 
 fn play_file(input: PathBuf) -> Result<(), Error> {
-    let decoder = libav_decoder::Decoder::open(&input.display().to_string())?;
+    let decoder = ffmpeg_decoder::Decoder::open(&input.display().to_string())?;
 
     let device = rodio::default_output_device().unwrap();
     let sink = Sink::new(&device);
@@ -75,8 +75,8 @@ struct Opts {
 
 #[derive(StructOpt)]
 enum Command {
-    /// Save converted file as `.raw` alongside input file
-    Save {
+    /// Convert file and save as `.raw` alongside input file
+    Convert {
         /// Input audio file
         #[structopt(parse(from_os_str))]
         input: PathBuf,

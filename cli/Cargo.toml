@@ -1,11 +1,11 @@
 [package]
-name = "libav-decoder-cli"
+name = "ffmpeg-decoder-cli"
 version = "0.1.0"
 authors = ["tarkah <admin@tarkah.dev>"]
 edition = "2018"
 
 [dependencies]
-libav-decoder = { path = "../decoder", features = ['rodio_source'] }
+ffmpeg-decoder = { path = "../", features = ['rodio_source'] }
 
 rodio = { version = "0.11", default-features=false }
 

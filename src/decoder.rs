@@ -1,17 +1,14 @@
 use crate::error::Error;
 
-use libav_sys::avformat::{
-    av_frame_alloc, av_frame_free, av_frame_unref, av_get_alt_sample_fmt, av_get_bytes_per_sample,
-    av_get_sample_fmt_name, av_init_packet, av_packet_unref, av_read_frame, av_register_all,
-    av_sample_fmt_is_planar, avcodec_alloc_context3, avcodec_close, avcodec_find_decoder,
-    avcodec_free_context, avcodec_open2, avcodec_parameters_to_context, avcodec_receive_frame,
-    avcodec_send_packet, avformat_close_input, avformat_find_stream_info, avformat_open_input,
-    AVCodec, AVCodecContext, AVFormatContext, AVFrame, AVMediaType_AVMEDIA_TYPE_AUDIO, AVPacket,
-    AVSampleFormat_AV_SAMPLE_FMT_S16, AVStream,
-};
-use libav_sys::swresample::{
-    self, av_get_channel_layout_nb_channels, av_samples_alloc, av_samples_get_buffer_size,
-    swr_alloc_set_opts, swr_convert, swr_get_out_samples, swr_init,
+use ffmpeg4_sys::{
+    self, av_frame_alloc, av_frame_free, av_frame_unref, av_get_alt_sample_fmt,
+    av_get_bytes_per_sample, av_get_channel_layout_nb_channels, av_get_sample_fmt_name,
+    av_init_packet, av_packet_unref, av_read_frame, av_register_all, av_sample_fmt_is_planar,
+    av_samples_alloc, av_samples_get_buffer_size, avcodec_alloc_context3, avcodec_close,
+    avcodec_find_decoder, avcodec_free_context, avcodec_open2, avcodec_parameters_to_context,
+    avcodec_receive_frame, avcodec_send_packet, avformat_close_input, avformat_find_stream_info,
+    avformat_open_input, swr_alloc_set_opts, swr_convert, swr_get_out_samples, swr_init, AVCodec,
+    AVCodecContext, AVFormatContext, AVFrame, AVMediaType, AVPacket, AVSampleFormat, AVStream,
 };
 use std::ffi::{CStr, CString};
 use std::path::Path;
@@ -21,10 +18,10 @@ use std::time::Duration;
 
 use log::{error, info};
 
-const AVERROR_EOF: i32 = -0x20464F45;
+const AVERROR_EOF: i32 = -0x20_464_F45;
 const AVERROR_EAGAIN: i32 = -11;
 const AVERROR_EDEADLK: i32 = -35;
-const DEFAULT_CONVERSION_FORMAT: i32 = AVSampleFormat_AV_SAMPLE_FMT_S16;
+const DEFAULT_CONVERSION_FORMAT: AVSampleFormat = AVSampleFormat::AV_SAMPLE_FMT_S16;
 
 pub struct Decoder {
     format_ctx: FormatContext,
@@ -180,9 +177,7 @@ impl Decoder {
     }
 
     fn frame_for_stream(&self) -> bool {
-        unsafe {
-            self.packet.inner.as_ptr().as_ref().unwrap().stream_index as usize == self.stream.index
-        }
+        unsafe { self.packet.inner.as_ptr().as_ref().unwrap().stream_index == self.stream.index }
     }
 
     fn reset_packet(&mut self) {
@@ -301,7 +296,7 @@ impl Iterator for Decoder {
         match self.receive_decoded_frame() {
             ReceiveFrameStatus::Ok => {
                 self.convert_and_store_frame();
-                return Some(self.next_sample());
+                Some(self.next_sample())
             }
             ReceiveFrameStatus::Again | ReceiveFrameStatus::Deadlk => {
                 if self.process_next_frame().is_none() {
@@ -309,12 +304,12 @@ impl Iterator for Decoder {
                     return None;
                 }
 
-                return Some(self.next_sample());
+                Some(self.next_sample())
             }
             ReceiveFrameStatus::Other(status) => {
                 error!("{}", Error::ReceiveFrame(status));
                 self.cleanup();
-                return None;
+                None
             }
         }
     }
@@ -361,19 +356,19 @@ impl FormatContext {
 
         let streams = unsafe { slice::from_raw_parts(streams, num_streams as usize) };
 
-        let stream_idx = find_audio_stream(streams, num_streams)?;
+        let stream_idx = find_audio_stream(streams)?;
 
         Ok(Stream::new(streams[0], stream_idx))
     }
 }
 
 struct SwrContext {
-    inner: *mut swresample::SwrContext,
+    inner: *mut ffmpeg4_sys::SwrContext,
 }
 
 impl SwrContext {
     fn new(codec_ctx: &CodecContext) -> Result<SwrContext, Error> {
-        let swr_ctx: *mut swresample::SwrContext = unsafe {
+        let swr_ctx: *mut ffmpeg4_sys::SwrContext = unsafe {
             swr_alloc_set_opts(
                 ptr::null_mut(),
                 codec_ctx.channel_layout() as i64,
@@ -440,11 +435,11 @@ impl Frame {
 
 struct Stream {
     inner: *mut AVStream,
-    index: usize,
+    index: i32,
 }
 
 impl Stream {
-    fn new(inner: *mut AVStream, index: usize) -> Stream {
+    fn new(inner: *mut AVStream, index: i32) -> Stream {
         Stream { inner, index }
     }
 
@@ -514,7 +509,7 @@ impl CodecContext {
         name.to_str().unwrap()
     }
 
-    fn sample_format(&self) -> i32 {
+    fn sample_format(&self) -> AVSampleFormat {
         unsafe { self.inner.as_ref().unwrap().sample_fmt }
     }
 
@@ -583,10 +578,10 @@ enum ReceiveFrameStatus {
     Other(i32),
 }
 
-fn find_audio_stream(streams: &[*mut AVStream], num_streams: u32) -> Result<usize, Error> {
-    for n in 0..num_streams as usize {
+fn find_audio_stream(streams: &[*mut AVStream]) -> Result<i32, Error> {
+    for stream in streams {
         let codec_type = unsafe {
-            streams[n]
+            stream
                 .as_ref()
                 .unwrap()
                 .codecpar
@@ -594,9 +589,10 @@ fn find_audio_stream(streams: &[*mut AVStream], num_streams: u32) -> Result<usiz
                 .unwrap()
                 .codec_type
         };
+        let index = unsafe { stream.as_ref().unwrap().index };
 
-        if codec_type == AVMediaType_AVMEDIA_TYPE_AUDIO {
-            return Ok(n);
+        if codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO {
+            return Ok(index);
         }
     }
 

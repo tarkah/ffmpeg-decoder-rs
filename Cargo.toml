@@ -1,6 +1,30 @@
+[package]
+name = "ffmpeg-decoder"
+version = "0.1.0"
+authors = ["tarkah <admin@tarkah.dev>"]
+edition = "2018"
+
+[lib]
+name = "ffmpeg_decoder"
+path = "src/lib.rs"
+
+[features]
+default = []
+rodio_source = ['rodio']
+
+[dependencies]
+ffmpeg4-sys = "4.3.0-pre.1"
+
+thiserror = "1.0"
+log = "0.4"
+
+rodio = { version = "0.11", default-features=false, optional=true }
+
 [workspace]
 members = [
-    "libav-sys",
+    ".",
+    "cli"
+]
+default-members = [
     "cli",
-    "decoder"
 ]
