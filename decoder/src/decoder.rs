@@ -16,8 +16,9 @@ use libav_sys::swresample::{
 use std::ffi::{CStr, CString};
 use std::ptr;
 use std::slice;
+use std::time::Duration;
 
-use log::info;
+use log::{error, info};
 
 const AVERROR_EOF: i32 = -0x20464F45;
 const AVERROR_EAGAIN: i32 = -11;
@@ -179,10 +180,12 @@ impl Decoder {
         match self.read_next_frame() {
             ReadFrameStatus::Ok => {}
             ReadFrameStatus::Eof => {
-                self.cleanup();
                 return None;
             }
-            ReadFrameStatus::Other(status) => return Some(Err(Error::ReadFrame(status))),
+            ReadFrameStatus::Other(status) => {
+                error!("{}", Error::ReadFrame(status));
+                return None;
+            }
         }
 
         if !self.frame_for_stream() {
@@ -192,13 +195,19 @@ impl Decoder {
 
         match self.send_packet_for_decoding() {
             SendPacketStatus::Ok => self.reset_packet(),
-            SendPacketStatus::Other(status) => return Some(Err(Error::SendPacket(status))),
+            SendPacketStatus::Other(status) => {
+                error!("{}", Error::SendPacket(status));
+                return None;
+            }
         }
 
         match self.receive_decoded_frame() {
             ReceiveFrameStatus::Ok => {}
             ReceiveFrameStatus::Again => return self.process_next_frame(),
-            ReceiveFrameStatus::Other(status) => return Some(Err(Error::ReceiveFrame(status))),
+            ReceiveFrameStatus::Other(status) => {
+                error!("{}", Error::ReceiveFrame(status));
+                return None;
+            }
         }
 
         self.convert_and_store_frame();
@@ -227,47 +236,65 @@ impl Decoder {
             avformat_close_input(&mut self.format_ctx.inner);
         }
     }
+
+    pub(crate) fn _current_frame_len(&self) -> Option<usize> {
+        Some(self.current_frame.len())
+    }
+
+    pub(crate) fn _channels(&self) -> u16 {
+        self.codec_ctx.channels() as _
+    }
+
+    pub(crate) fn _sample_rate(&self) -> u32 {
+        self.codec_ctx.sample_rate() as _
+    }
+
+    pub(crate) fn _total_duration(&self) -> Option<Duration> {
+        //TODO let duration = self.stream.duration();
+        None
+    }
 }
 
-impl Iterator for Decoder {
-    type Item = Result<i16, Error>;
+unsafe impl Send for Decoder {}
 
+impl Iterator for Decoder {
+    type Item = i16;
+
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if !self.first_frame_stored {
-            if let Some(r) = self.process_next_frame() {
-                if let Err(e) = r {
-                    return Some(Err(e));
-                }
-            } else {
+            if self.process_next_frame().is_none() {
+                self.cleanup();
                 return None;
-            };
+            }
 
             self.first_frame_stored = true;
 
-            return Some(Ok(self.next_sample()));
+            return Some(self.next_sample());
         }
 
         if !self.current_frame.is_empty() {
-            return Some(Ok(self.next_sample()));
+            return Some(self.next_sample());
         }
 
         match self.receive_decoded_frame() {
             ReceiveFrameStatus::Ok => {
                 self.convert_and_store_frame();
-                return Some(Ok(self.next_sample()));
+                return Some(self.next_sample());
             }
             ReceiveFrameStatus::Again => {
-                if let Some(r) = self.process_next_frame() {
-                    if let Err(e) = r {
-                        return Some(Err(e));
-                    }
-                } else {
+                if self.process_next_frame().is_none() {
+                    self.cleanup();
                     return None;
-                };
+                }
 
-                return Some(Ok(self.next_sample()));
+                return Some(self.next_sample());
             }
-            ReceiveFrameStatus::Other(status) => return Some(Err(Error::ReceiveFrame(status))),
+            ReceiveFrameStatus::Other(status) => {
+                error!("{}", Error::ReceiveFrame(status));
+                self.cleanup();
+                return None;
+            }
         }
     }
 }
@@ -411,6 +438,11 @@ impl Stream {
         }
 
         Ok(Codec::new(codec))
+    }
+
+    #[allow(dead_code)]
+    fn duration(&self) -> i64 {
+        unsafe { self.inner.as_ref().unwrap().duration }
     }
 }
 

@@ -5,7 +5,9 @@ authors = ["tarkah <admin@tarkah.dev>"]
 edition = "2018"
 
 [dependencies]
-libav-decoder = { path = "../decoder" }
+libav-decoder = { path = "../decoder", features = ['rodio_source'] }
+
+rodio = { version = "0.11", default-features=false }
 
 anyhow = "1.0"
 env_logger = "0.7"

@@ -3,33 +3,35 @@ use env_logger::Env;
 use log::{error, info};
 use structopt::StructOpt;
 
+use rodio::Sink;
+
 use std::path::PathBuf;
 
 fn main() {
     env_logger::from_env(Env::default().default_filter_or("info")).init();
 
-    if let Err(e) = run() {
+    let opts = Opts::from_args();
+
+    let status = match opts.command {
+        Command::Save { input } => decode_to_file(input),
+        Command::Play { input } => play_file(input),
+    };
+
+    if let Err(e) = status {
         log_error(e.into());
         std::process::exit(1);
     }
 }
 
-fn run() -> Result<(), Error> {
-    let opts = Opts::from_args();
+fn decode_to_file(input: PathBuf) -> Result<(), Error> {
+    let decoder = libav_decoder::Decoder::open(&input.display().to_string())?;
 
-    let input = opts.input.display().to_string();
-
-    let decoder = libav_decoder::Decoder::open(&input)?;
-
-    let mut samples = vec![];
-    for sample in decoder {
-        samples.push(sample?);
-    }
+    let samples = decoder.into_iter().collect::<Vec<i16>>();
 
     let samples_u8 =
         unsafe { std::slice::from_raw_parts(samples.as_ptr() as *const u8, samples.len() * 2) };
 
-    let mut out_path: PathBuf = opts.input;
+    let mut out_path: PathBuf = input;
     out_path.set_extension("raw");
 
     std::fs::write(&out_path, samples_u8)?;
@@ -42,6 +44,21 @@ fn run() -> Result<(), Error> {
     Ok(())
 }
 
+fn play_file(input: PathBuf) -> Result<(), Error> {
+    let decoder = libav_decoder::Decoder::open(&input.display().to_string())?;
+
+    let device = rodio::default_output_device().unwrap();
+    let sink = Sink::new(&device);
+
+    sink.append(decoder);
+
+    sink.play();
+
+    sink.sleep_until_end();
+
+    Ok(())
+}
+
 fn log_error(e: Error) {
     error!("{}", e);
 }
@@ -49,12 +66,25 @@ fn log_error(e: Error) {
 #[derive(StructOpt)]
 #[structopt(
     name = "libav-decoder-cli",
-    about = "Convert input audio file sample format to signed 16bit little endian.
-
-A `.raw` file will be saved with the same name alongside the input file."
+    about = "Convert input audio file sample format to signed 16bit"
 )]
 struct Opts {
-    /// Input audio file
-    #[structopt(parse(from_os_str))]
-    input: PathBuf,
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+#[derive(StructOpt)]
+enum Command {
+    /// Save converted file as `.raw` alongside input file
+    Save {
+        /// Input audio file
+        #[structopt(parse(from_os_str))]
+        input: PathBuf,
+    },
+    /// Play input file
+    Play {
+        /// Input audio file
+        #[structopt(parse(from_os_str))]
+        input: PathBuf,
+    },
 }
