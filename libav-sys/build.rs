@@ -1,43 +1,49 @@
-extern crate bindgen;
-extern crate metadeps;
-
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
-
-fn format_write(builder: bindgen::Builder, output: &str) {
-    let s = builder
-        .generate()
-        .unwrap()
-        .to_string()
-        .replace("/**", "/*")
-        .replace("/*!", "/*");
-
-    let mut file = File::create(output).unwrap();
-
-    let _ = file.write(s.as_bytes());
-}
-
-fn common_builder() -> bindgen::Builder {
-    bindgen::builder()
-        .raw_line("#![allow(deprecated)]")
-        .raw_line("#![allow(dead_code)]")
-        .raw_line("#![allow(non_camel_case_types)]")
-        .raw_line("#![allow(non_snake_case)]")
-        .raw_line("#![allow(non_upper_case_globals)]")
-}
+use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=Cargo.toml");
 
+    #[cfg(not(target_family = "windows"))]
     let libs = metadeps::probe().unwrap();
 
+    #[cfg(target_family = "windows")]
+    let win_lib = std::env::var("AV_LIB");
+    #[cfg(target_family = "windows")]
+    let win_include = std::env::var("AV_INCLUDE");
+    #[cfg(target_family = "windows")]
+    {
+        if win_lib.is_err() || win_include.is_err() {
+            panic!(
+                "Set AV_LIB and AV_INCLUDE variable to directories with libav libs and headers. \
+                 DO NOT include drive in path: don't do `C:\\path`, use `\\path`"
+            );
+        }
+    }
+
+    #[cfg(target_family = "windows")]
+    println!(
+        "cargo:rustc-link-search=native={}",
+        &win_lib.as_ref().unwrap()
+    );
+
     for e in ["avcodec", "avformat", "avutil", "swresample"].iter() {
-        let headers = libs
-            .get(&format!("lib{}", e))
-            .unwrap()
-            .include_paths
-            .clone();
+        #[cfg(target_family = "windows")]
+        println!("cargo:rustc-link-lib={}\\{}", &win_lib.as_ref().unwrap(), e);
+
+        let headers: Vec<PathBuf>;
+        cfg_if::cfg_if! {
+            if #[cfg(target_family = "windows")] {
+                headers = vec![PathBuf::from(&format!("{}",&win_include.as_ref().unwrap()))];
+            } else {
+                headers = libs.get(&format!("lib{}", e))
+                    .unwrap()
+                    .include_paths
+                    .clone();
+            }
+        };
 
         let ignored_macros = IgnoreMacros(
             vec![
@@ -77,4 +83,26 @@ impl bindgen::callbacks::ParseCallbacks for IgnoreMacros {
             bindgen::callbacks::MacroParsingBehavior::Default
         }
     }
+}
+
+fn format_write(builder: bindgen::Builder, output: &str) {
+    let s = builder
+        .generate()
+        .unwrap()
+        .to_string()
+        .replace("/**", "/*")
+        .replace("/*!", "/*");
+
+    let mut file = File::create(output).unwrap();
+
+    let _ = file.write(s.as_bytes());
+}
+
+fn common_builder() -> bindgen::Builder {
+    bindgen::builder()
+        .raw_line("#![allow(deprecated)]")
+        .raw_line("#![allow(dead_code)]")
+        .raw_line("#![allow(non_camel_case_types)]")
+        .raw_line("#![allow(non_snake_case)]")
+        .raw_line("#![allow(non_upper_case_globals)]")
 }
