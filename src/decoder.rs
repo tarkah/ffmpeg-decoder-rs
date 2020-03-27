@@ -157,9 +157,7 @@ impl Decoder {
                 )
             };
 
-            let out_slice = unsafe { slice::from_raw_parts(out_buf, out_size as usize) };
-
-            out_slice
+            unsafe { slice::from_raw_parts(out_buf, out_size as usize) }
         } else {
             unsafe {
                 slice::from_raw_parts(
