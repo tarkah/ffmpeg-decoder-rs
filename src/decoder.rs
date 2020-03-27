@@ -1,7 +1,7 @@
 use crate::error::Error;
 
 use ffmpeg4_sys::{
-    self, av_frame_alloc, av_frame_free, av_frame_unref, av_get_alt_sample_fmt,
+    self, av_frame_alloc, av_frame_free, av_frame_unref, av_freep, av_get_alt_sample_fmt,
     av_get_bytes_per_sample, av_get_channel_layout_nb_channels, av_get_sample_fmt_name,
     av_init_packet, av_packet_unref, av_read_frame, av_register_all, av_sample_fmt_is_planar,
     av_samples_alloc, av_samples_get_buffer_size, avcodec_alloc_context3, avcodec_close,
@@ -120,9 +120,9 @@ impl Decoder {
 
         let extended_data = self.frame.extended_data();
 
-        let out_slice = if self.swr_ctx.is_some() {
-            let mut out_buf = std::ptr::null_mut::<u8>();
+        let mut out_buf = std::ptr::null_mut::<u8>();
 
+        let out_slice = if self.swr_ctx.is_some() {
             let out_samples =
                 unsafe { swr_get_out_samples(self.swr_ctx.as_ref().unwrap().inner, num_samples) };
 
@@ -157,7 +157,9 @@ impl Decoder {
                 )
             };
 
-            unsafe { slice::from_raw_parts(out_buf, out_size as usize) }
+            let out_slice = unsafe { slice::from_raw_parts(out_buf, out_size as usize) };
+
+            out_slice
         } else {
             unsafe {
                 slice::from_raw_parts(
@@ -172,6 +174,11 @@ impl Decoder {
         }
 
         self.current_frame.extend_from_slice(out_slice);
+
+        if self.swr_ctx.is_some() {
+            // Free samples buffer
+            unsafe { av_freep(&mut out_buf as *mut _ as _) };
+        }
 
         unsafe { av_frame_unref(self.frame.inner) };
     }
@@ -236,9 +243,6 @@ impl Decoder {
         drain_decoder(self.codec_ctx.inner).unwrap();
 
         unsafe {
-            // Free samples buffer
-            //av_freep(self.samples_buffer.inner as *mut std::ffi::c_void);
-
             // Free all data used by the frame.
             av_frame_free(&mut self.frame.inner);
 
