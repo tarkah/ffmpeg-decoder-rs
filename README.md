@@ -1,4 +1,7 @@
 # ffmpeg-decoder
+[![Crates.io](https://img.shields.io/crates/v/ffmpeg-decoder)](https://crates.io/crates/ffmpeg-decoder)
+[![](https://docs.rs/ffmpeg-decoder/badge.svg)](https://docs.rs/ffmpeg-decoder)
+
 
 Decodes audio files and converts sample format to signed 16bit. Can
 be used as a playback source with [rodio](https://github.com/RustAudio/rodio).
