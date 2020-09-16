@@ -20,7 +20,7 @@ default = []
 rodio_source = ['rodio']
 
 [dependencies]
-ffmpeg4-sys = { version = "4.3.0-pre.1", default-features=false, features=['avcodec','avformat','swresample'] }
+ffmpeg-sys-next = { version = "4.3.4", default-features=false, features=['avcodec','avformat','swresample'] }
 
 thiserror = "1.0"
 log = "0.4"
