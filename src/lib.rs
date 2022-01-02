@@ -13,14 +13,15 @@
 //! ## Example as Rodio Source
 //!
 //! ```rust
-//! use rodio::Sink;
-//! use std::path::PathBuf;
+//! use rodio::{OutputStream, Sink};
+//! use std::path::Path;
+//! use std::error::Error;
 //!
-//! fn play_file(input: PathBuf) -> Result<(), Error> {
-//!     let decoder = ffmpeg_decoder::Decoder::open(&input)?;
+//! fn play_file(input: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
+//!     let decoder = ffmpeg_decoder::Decoder::open(input)?;
 //!
-//!     let device = rodio::default_output_device().unwrap();
-//!     let sink = Sink::new(&device);
+//!     let (_stream, stream_handler) = OutputStream::try_default()?;
+//!     let sink = Sink::try_new(&stream_handler)?;
 //!
 //!     sink.append(decoder);
 //!     sink.play();
