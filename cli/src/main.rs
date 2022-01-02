@@ -47,8 +47,8 @@ fn decode_to_file(input: PathBuf) -> Result<(), Error> {
 fn play_file(input: PathBuf) -> Result<(), Error> {
     let decoder = ffmpeg_decoder::Decoder::open(&input)?;
 
-    let device = rodio::default_output_device().unwrap();
-    let sink = Sink::new(&device);
+    let (_stream, stream_handler) = rodio::OutputStream::try_default()?;
+    let sink = Sink::try_new(&stream_handler)?;
 
     sink.append(decoder);
     sink.play();
